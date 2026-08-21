@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import text
 
-from app.core.config import APP_NAME
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal, engine
 from app.models.tables import Base
 from app.routers.predictions import router as predictions_router
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=APP_NAME,
+    title=settings.APP_NAME,
     version="1.0.0",
     description="경기별 승부예측 등록·수정·조회 서비스",
     lifespan=lifespan,
