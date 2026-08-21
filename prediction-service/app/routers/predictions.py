@@ -4,11 +4,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.matches_client import (
-    ensure_prediction_is_open,
-    get_match,
-)
-from app.core.security import get_current_user
+from app.core.matches_client import ensure_prediction_is_open, get_match
+from app.core.security import CurrentUser, get_current_user
 from app.models.schemas import (
     MatchPredictionSummary,
     PredictionCount,
@@ -32,13 +29,13 @@ router = APIRouter(
 )
 async def create_prediction(
     request: PredictionCreate,
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     match = await get_match(request.match_id)
     ensure_prediction_is_open(match)
 
-    user_id = int(current_user["sub"])
+    user_id = current_user.id
 
     existing_query = select(Prediction).where(
         Prediction.user_id == user_id,
@@ -82,10 +79,10 @@ async def create_prediction(
 async def update_prediction(
     prediction_id: int,
     request: PredictionUpdate,
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    user_id = int(current_user["sub"])
+    user_id = current_user.id
 
     query = select(Prediction).where(
         Prediction.id == prediction_id,
@@ -120,10 +117,10 @@ async def update_prediction(
     response_model=list[PredictionResponse],
 )
 async def list_my_predictions(
-    current_user: dict = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    user_id = int(current_user["sub"])
+    user_id = current_user.id
 
     query = (
         select(Prediction)
@@ -133,7 +130,7 @@ async def list_my_predictions(
 
     result = await db.scalars(query)
 
-    return result.all()
+    return list(result.all())
 
 
 @router.get(

@@ -3,14 +3,14 @@ from datetime import datetime, timezone
 import httpx
 from fastapi import HTTPException, status
 
-from app.core.config import MATCHES_SERVICE_URL
+from app.core.config import settings
 
 
 EDITABLE_MATCH_STATUSES = {"SCHEDULED", "TIMED"}
 
 
 async def get_match(match_id: int) -> dict:
-    url = f"{MATCHES_SERVICE_URL}/matches/{match_id}"
+    url = f"{settings.MATCHES_SERVICE_URL}/matches/{match_id}"
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
