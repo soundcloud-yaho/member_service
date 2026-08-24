@@ -1,9 +1,10 @@
-# [엔트리] FastAPI 앱 생성, 라우터 등록, 헬스체크
+# [엔트리] FastAPI 앱 생성, 라우터 등록, 헬스체크 및 Prometheus 메트릭
 
 import logging
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import text
 
 from app.core.database import Base, engine
@@ -21,14 +22,14 @@ app = FastAPI(
 )
 
 
-# 프론트엔드 주소 — matches 서비스의 origins 목록과 동일하게 맞춰둠
+# 로컬 개발 및 운영 프론트엔드 주소
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
-    # 나중에 프론트 배포 주소 추가
-    # "https://프론트도메인",
+    "https://rubao.store",
+    "https://www.rubao.store",
 ]
 
 
@@ -39,6 +40,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Prometheus 메트릭 수집
+instrumentator = Instrumentator(
+    excluded_handlers=[
+        "/health",
+        "/healthz",
+        "/readyz",
+        "/metrics",
+        "/docs",
+        "/openapi.json",
+    ],
+)
+
+instrumentator.instrument(app).expose(app)
 
 
 # 개발 초기: 테이블 없으면 자동 생성

@@ -72,15 +72,19 @@ jobs:
           IMAGE="${ECR_REGISTRY}/soundcloud-prod/${APPLICATION}"
 
           echo "Docker image: ${IMAGE}:${IMAGE_TAG}"
+          echo "Docker image: ${IMAGE}:latest"
 
           docker build \
             --file "${DOCKERFILE}" \
             --tag "${IMAGE}:${IMAGE_TAG}" \
+            --tag "${IMAGE}:latest" \
             "${BUILD_CONTEXT}"
 
           docker push "${IMAGE}:${IMAGE_TAG}"
+          docker push "${IMAGE}:latest"
 
           echo "ECR Push 완료: ${IMAGE}:${IMAGE_TAG}"
+          echo "ECR Push 완료: ${IMAGE}:latest"
 
       - name: Request Infra Image Update
         uses: peter-evans/repository-dispatch@v4
