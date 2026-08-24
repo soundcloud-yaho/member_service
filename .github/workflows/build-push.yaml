@@ -1,0 +1,91 @@
+# [CI/CD] main 푸시 시 Member, Comment, Prediction 이미지 빌드 → ECR Push
+# ECR Push 완료 후 Infra 레포에 이미지 태그 변경 요청
+
+name: Build and Push MSA Images to ECR
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - application: member
+            context: .
+            dockerfile: ./Dockerfile
+
+          - application: comment
+            context: ./comment-service
+            dockerfile: ./comment-service/Dockerfile
+
+          - application: prediction
+            context: ./prediction-service
+            dockerfile: ./prediction-service/Dockerfile
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set Image Tag
+        id: image
+        shell: bash
+        run: |
+          TAG="${GITHUB_SHA::7}"
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Application: ${{ matrix.application }}"
+          echo "Image Tag: ${TAG}"
+
+      - name: Build and Push Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.image.outputs.tag }}
+          APPLICATION: ${{ matrix.application }}
+          BUILD_CONTEXT: ${{ matrix.context }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${ECR_REGISTRY}/soundcloud-prod/${APPLICATION}"
+
+          echo "Docker image: ${IMAGE}:${IMAGE_TAG}"
+
+          docker build \
+            --file "${DOCKERFILE}" \
+            --tag "${IMAGE}:${IMAGE_TAG}" \
+            "${BUILD_CONTEXT}"
+
+          docker push "${IMAGE}:${IMAGE_TAG}"
+
+          echo "ECR Push 완료: ${IMAGE}:${IMAGE_TAG}"
+
+      - name: Request Infra Image Update
+        uses: peter-evans/repository-dispatch@v4
+        with:
+          token: ${{ secrets.INFRA_CICD_TOKEN }}
+          repository: soundcloud-yaho/infra
+          event-type: update-${{ matrix.application }}-image
+          client-payload: '{"application":"${{ matrix.application }}","image_tag":"${{ steps.image.outputs.tag }}"}'
