@@ -1,4 +1,5 @@
 import os
+from urllib.parse import quote_plus
 
 from dotenv import load_dotenv
 
@@ -61,9 +62,12 @@ settings = Settings()
 
 
 def make_database_url() -> str:
+    user = quote_plus(settings.DB_USER)
+    password = quote_plus(settings.DB_PASSWORD)
+
     return (
         f"postgresql+asyncpg://"
-        f"{settings.DB_USER}:{settings.DB_PASSWORD}"
+        f"{user}:{password}"
         f"@{settings.DB_HOST}:{settings.DB_PORT}"
         f"/{settings.DB_NAME}"
     )
